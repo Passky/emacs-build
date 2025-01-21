@@ -1,0 +1,84 @@
+# This is a basic workflow to help you get started with Actions
+
+name: build
+
+# Controls when the action will run.
+on:
+  schedule:
+    - cron: "0 0 1 * *" # monthly
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  build:
+    name: Build Emacs
+    # Matrix strategy from
+    # https://github.com/msys2/MINGW-packages/blob/master/.github/workflows/main.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            shell: powershell
+            msystem: UCRT64
+            build_options: --with-rsvg 
+            
+    # The type of runner that the job will run on
+    runs-on: ${{ matrix.os }}
+    env:
+      MSYS2_DIR: C:\msys64
+      EMACS_REPO: ${{ needs.prepare_env.outputs.repo }}
+      EMACS_PKG_VERSION: ${{ needs.prepare_env.outputs.pkg_version }}
+      EMACS_CERT_SECRET: ${{ secrets.EMACS_CERT_SECRET }}
+
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      - name: Setup Msys2
+        uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: ${{ matrix.msystem }}
+          release: false
+
+      # This is the shortest job, but in this case it pulls all MSYS/MINGW64
+      - name: Clone Emacs
+        if: runner.os == 'Windows'
+        run: .\emacs-build.cmd  --clone --repo https://github.com/emacs-mirror/emacs --branch ${{ needs.prepare_env.outputs.commit }}
+
+      - name: Install deps
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          ./emacs-build.sh --slim --ensure ${{ matrix.build_options }}
+
+      - name: Build Emacs
+        if: runner.os == 'Windows'
+        # Require --with-* flags, else the deps will not be included properly
+        run: |
+          .\emacs-build.cmd --pdf-tools --hunspell --slim --branch ${{ needs.prepare_env.outputs.commit }} --configure --build-dev ${{ matrix.build_options }}
+
+      - name: Package Emacs
+        if: runner.os == 'Windows'
+        run: |
+          .\emacs-build.cmd --slim --branch ${{ needs.prepare_env.outputs.commit }} --pack-all ${{ matrix.build_options }}
+
+      # Upload release for each build
+      - name: Upload binaries to release
+        id: upload_release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ github.token }}
+          file: ./zips/*{-full.zip}
+          file_glob: true
+          tag: v${{ needs.prepare_env.outputs.version }}
+          release_name: emacs_${{ needs.prepare_env.outputs.version }}
+          draft: false
+          prerelease: false
