@@ -21,7 +21,6 @@ jobs:
         include:
           - os: windows-2022
             shell: powershell
-            msystem: UCRT64
             
     # The type of runner that the job will run on
     runs-on: ${{ matrix.os }}
@@ -37,18 +36,6 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
 
-      - name: Setup Msys2
-        uses: msys2/setup-msys2@v2
-        if: runner.os == 'Windows'
-        with:
-          msystem: ${{ matrix.msystem }}
-          release: false
-
-      - name: Install deps
-        shell: msys2 {0}
-        run: |
-          ./emacs-build.sh --slim --ensure
-
       - name: Emacs Igc
         # Require --with-* flags, else the deps will not be included properly
         run: |
@@ -63,7 +50,6 @@ jobs:
         id: upload_release
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ github.token }}
           file: ./zips/*{.zip}
           file_glob: true
 
