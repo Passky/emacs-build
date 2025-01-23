@@ -44,10 +44,6 @@ jobs:
           msystem: ${{ matrix.msystem }}
           release: false
 
-      # This is the shortest job, but in this case it pulls all MSYS/MINGW64
-      - name: Clone Emacs
-        run: .\emacs-build.cmd  --clone --repo https://github.com/emacs-mirror/emacs
-
       - name: Install deps
         shell: msys2 {0}
         run: |
