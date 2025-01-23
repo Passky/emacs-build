@@ -53,24 +53,25 @@ jobs:
         run: |
           ./emacs-build.sh --slim --ensure
 
-      - name: Build Emacs
+      - name: Emacs Igc
         # Require --with-* flags, else the deps will not be included properly
         run: |
-          .\emacs-build.cmd  --slim  --configure --build-dev 
+          .\emacs-build.cmd --branch feature/igc --clone --slim --deps --build --pack-emacs
 
-      - name: Package Emacs
+      - name: Emacs 30
         run: |
-          .\emacs-build.cmd --slim  --pack-all 
+          .\emacs-build.cmd --branch emacs-30 --clone --slim --deps --build --pack-emacs 
 
-      - name: Zip the directory
-        shell: msys2 {0}
-        run: |
-          cd /d/a/emacs-build/emacs-build/build/
-          zip -r master-ucrt-x86_64-full.zip master-ucrt-x86_64
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
+      # Upload release for each build
+      - name: Upload binaries to release
+        id: upload_release
+        uses: svenstaro/upload-release-action@v2
         with:
-          name: master-ucrt-x86_64-full.zip
-          path: /d/a/emacs-build/emacs-build/build/master-ucrt-x86_64-full.zip
+          repo_token: ${{ github.token }}
+          file: ./zips/*{.zip}
+          file_glob: true
+          tag: v${{ needs.prepare_env.outputs.version }}
+          release_name: emacs_${{ needs.prepare_env.outputs.version }}
+          draft: false
+          prerelease: false
 
