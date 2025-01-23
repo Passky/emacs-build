@@ -494,7 +494,7 @@ emacs_pkg_var=""
 #         -fassociative-math -fno-signed-zeros -frename-registers -funroll-loops \
 #         -fomit-frame-pointer \
 #         -fallow-store-data-races  -fno-semantic-interposition -floop-parallelize-all -ftree-parallelize-loops=4"
-CFLAGS="-O1 $CFLAGS"
+CFLAGS="-O2 -g3 $CFLAGS"
 
 while test -n "$*"; do
     case $1 in
